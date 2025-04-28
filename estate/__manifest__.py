@@ -1,4 +1,5 @@
 {
     'name': 'Real Estate Module',
-    'depends': 'base_setup'
+    'depends': ['base_setup'],
+    'Application': True
 }
