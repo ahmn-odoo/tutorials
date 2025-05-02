@@ -1,13 +1,17 @@
-from odoo import models, fields, api
-from dateutil.relativedelta import relativedelta
-from odoo.exceptions import UserError
 from datetime import date
+from dateutil.relativedelta import relativedelta
+from odoo import models, fields, api
+from odoo.exceptions import UserError
 from odoo.tools import float_utils
 
-class property_offer(models.Model):
+class PropertyOffer(models.Model):
     _name = "estate.property.offer"
     _description = "bla"
     _order = 'price desc'
+    _sql_constraints = [
+        ('check_price_positive', 'CHECK(price > 0)', 'The price must be strictly positive.')
+    ]
+    
     price = fields.Float('Price')
     status = fields.Selection(string='Status', selection=[('accepted', 'Accepted'),('refused', 'Refused')], copy=False)
     partner_id = fields.Many2one('res.partner', string='Buyer', required=True)
@@ -15,9 +19,6 @@ class property_offer(models.Model):
     validity = fields.Integer('Validity (days)', default=7)
     deadline_date = fields.Date('Deadline', compute='_compute_deadline_date', inverse='_inverse_deadline_date', default=lambda self: date.today() + relativedelta(days=7))
     property_type_id = fields.Many2one(related='property_id.property_type_id', string='Property Type', store=True)
-    _sql_constraints = [
-        ('check_price_positive', 'CHECK(price > 0)', 'The price must be strictly positive.')
-    ]
     
     @api.depends('validity')
     def _compute_deadline_date(self):
@@ -33,23 +34,6 @@ class property_offer(models.Model):
                 record.validity = (record.deadline_date - record.create_date.date()).days
             else:
                 record.validity = 0
-                
-    def action_accept_offer(self):
-        for record in self:
-            if record.status == 'refused':
-                raise UserError('You cannot accept a refused offer')
-            if record.property_id.offer_ids.filtered(lambda o: o.status == 'accepted'):
-                raise UserError('Only one offer can be accepted for a property')
-            record.status = 'accepted'
-        return True
-            
-    def action_refuse_offer(self):
-        for record in self:
-            if record.status == 'accepted':
-                raise UserError('You cannot refuse an accepted offer')
-            else:
-                record.status = 'refused'
-        return True
     
     @api.model_create_multi
     def create(self, vals_list):
@@ -59,3 +43,21 @@ class property_offer(models.Model):
                 raise UserError('The offer price must be higher than the best offer price')
             self.env['estate.property'].browse(vals.get('property_id')).state = 'offer_received'
         return super().create(vals_list)
+    
+    def action_accept_offer(self):
+        for record in self:
+            if record.status == 'refused':
+                raise UserError('You cannot accept a refused offer')
+            if record.property_id.offer_ids.filtered(lambda o: o.status == 'accepted'):
+                raise UserError('Only one offer can be accepted for a property')
+            record.status = 'accepted'
+            record.property_id.state = 'offer_accepted'
+        return True
+            
+    def action_refuse_offer(self):
+        for record in self:
+            if record.status == 'accepted':
+                raise UserError('You cannot refuse an accepted offer')
+            else:
+                record.status = 'refused'
+        return True

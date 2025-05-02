@@ -1,6 +1,6 @@
 <odoo>
     <record id="estate_user_view_form" model="ir.ui.view">
-        <field name="name">estate.user.form</field>
+        <field name="name">estate.user.view.form.inherit.user</field>
         <field name="model">res.users</field>
         <field name="inherit_id" ref="base.view_users_form"/>
         <field name="arch" type="xml">
@@ -8,7 +8,7 @@
                 <page string="Real Estate Properties" name="estate_properties">
                     <field name="property_ids" widget="one2many_list"/>
                 </page>
-            </xpath>     
+            </xpath>
         </field>
     </record>
 </odoo>

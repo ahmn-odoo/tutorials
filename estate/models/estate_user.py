@@ -1,6 +1,6 @@
 from odoo import models, fields, api
 
-class estate_user(models.Model):
+class EstateUser(models.Model):
     _inherit = 'res.users'
     _description = "bla"
     
