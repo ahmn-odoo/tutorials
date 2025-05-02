@@ -84,6 +84,11 @@ class property(models.Model):
     @api.constrains('selling_price', 'expected_price')
     def _check_price(self):
         for record in self:
-            if not float_utils.float_is_zero(record.selling_price, precision_rounding=0.01):
-                if float_utils.float_compare(record.selling_price, record.expected_price*0.9, precision_rounding=0.01) < 0:
-                    raise ValidationError('The selling price must be atleast 90% of the expected price.')
+            if (not float_utils.float_is_zero(record.selling_price, precision_rounding=0.01)) and float_utils.float_compare(record.selling_price, record.expected_price*0.9, precision_rounding=0.01) < 0:
+                raise ValidationError('The selling price must be atleast 90% of the expected price.')
+                
+    @api.ondelete(at_uninstall=True)
+    def _unlink_if_state_new_or_cancelled(self):
+        if self.filtered(lambda record: record.state not in ['new', 'cancelled']):
+            raise UserError('You cannot delete a property that is not new or cancelled.')
+            

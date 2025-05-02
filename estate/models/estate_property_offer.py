@@ -2,6 +2,7 @@ from odoo import models, fields, api
 from dateutil.relativedelta import relativedelta
 from odoo.exceptions import UserError
 from datetime import date
+from odoo.tools import float_utils
 
 class property_offer(models.Model):
     _name = "estate.property.offer"
@@ -13,6 +14,7 @@ class property_offer(models.Model):
     property_id = fields.Many2one('estate.property', string='Property', required=True)
     validity = fields.Integer('Validity (days)', default=7)
     deadline_date = fields.Date('Deadline', compute='_compute_deadline_date', inverse='_inverse_deadline_date', default=lambda self: date.today() + relativedelta(days=7))
+    property_type_id = fields.Many2one(related='property_id.property_type_id', string='Property Type', store=True)
     _sql_constraints = [
         ('check_price_positive', 'CHECK(price > 0)', 'The price must be strictly positive.')
     ]
@@ -48,3 +50,12 @@ class property_offer(models.Model):
             else:
                 record.status = 'refused'
         return True
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            best_price = self.search([('property_id', '=', vals.get('property_id'))], limit=1).price
+            if float_utils.float_compare(vals.get('price'), best_price, precision_digits=2) <= 0:
+                raise UserError('The offer price must be higher than the best offer price')
+            self.env['estate.property'].browse(vals.get('property_id')).state = 'offer_received'
+        return super().create(vals_list)
